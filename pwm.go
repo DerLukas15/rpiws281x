@@ -214,8 +214,9 @@ func initializePWM(channels []ledChannel, frequency uint32) error {
 				ledColors = 4
 			}
 			ledBitCount := curChannel.strip.TotalCount() * ledColors * 8 * pwmBitsPerOutputBit // Each LED has 8 Bit per Color which are each mapped to pwmBitsPerOutputBit Bits
-			thisByteCount := (uint32(ledBitCount>>3) & ^uint32(0x7)) + 8                       // 8 Byte extra for spacing
+			thisByteCount := (uint32(ledBitCount>>3) & ^uint32(0x7)) + 8
 			//Larger channel will be the reference
+			thisByteCount += 32 //Spacing so that leds render. Don't know yet how to calculate
 			if thisByteCount > dataSize {
 				dataSize = thisByteCount
 			}
@@ -256,25 +257,25 @@ func initializePWM(channels []ledChannel, frequency uint32) error {
 func cleanupPWM() error {
 	err := stopPWM()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cleanup pwm")
 	}
 	if pwmRegisterMem != nil {
 		err := pwmRegisterMem.Unmap()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "cleanup pwm")
 		}
 		pwmRegisterMem = nil
 	}
 	if pwmDataMem != nil {
 		err := pwmDataMem.Unmap()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "cleanup pwm data")
 		}
 		pwmDataMem = nil
 	}
 	err = cleanupDmaCBPWM()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cleanup pwm dma cb")
 	}
 	activePWMChannels = 0
 	return nil
@@ -385,6 +386,7 @@ func renderPWM(channels []ledChannel, frequency uint32) (int64, error) {
 			}
 		}
 	}
+	//fmt.Println(rpimemmap.Dump(pwmDataMem, 0))
 	// 300: Minimum time to wait for reset to occur in microseconds
 	return int64(protocolTime + 300), nil
 }

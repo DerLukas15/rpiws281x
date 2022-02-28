@@ -154,6 +154,13 @@ func (c *Config) Stop() error {
 	}
 	//Don't stop DMA as other config might use it.
 	c.initialized = false
+	for _, curChan := range c.channels {
+		if curChan.active {
+			fmt.Println("Setting pinmode")
+			curChan.pin.Mode(rpigpio.ModeOut)
+			curChan.pin.Set(0)
+		}
+	}
 	return nil
 }
 
